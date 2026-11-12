@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 export const maxDuration = 60
+const GEMINI_REQUEST_TIMEOUT_MS = 20_000
+const GEMINI_RETRY_DELAY_MS = 1_000
+const MAX_GEMINI_ATTEMPTS = 2
 
 function parseTextResponse(content: string) {
   const sections = {
@@ -103,39 +106,91 @@ QUESTIONS FOR YOUR DOCTOR:
 
 Important: Use simple, non-technical language. Be empathetic and clear. Do NOT use JSON format.`
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2000,
-          },
-        }),
-      }
-    )
+    let response: Response | undefined
+    for (let attempt = 1; attempt <= MAX_GEMINI_ATTEMPTS; attempt++) {
+      const controller = new AbortController()
+      const timeout = setTimeout(
+        () => controller.abort(),
+        GEMINI_REQUEST_TIMEOUT_MS
+      )
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('Gemini API error:', error)
-      const message = response.status === 404
-        ? 'The configured Gemini model is unavailable for this API key. Check that the key is active and has access to Gemini 3.6 Flash.'
-        : `AI analysis service returned HTTP ${response.status}. Check the Gemini API key and quota.`
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2000,
+              },
+            }),
+            signal: controller.signal,
+          }
+        )
+      } catch (error) {
+        if (attempt === MAX_GEMINI_ATTEMPTS) {
+          const timedOut =
+            error instanceof Error && error.name === 'AbortError'
+          console.error('Gemini request failed:', error)
+          return NextResponse.json(
+            {
+              error: timedOut
+                ? 'AI analysis timed out. Please try again with a shorter or clearer report.'
+                : 'Could not reach the AI service. Please try again shortly.',
+            },
+            { status: timedOut ? 504 : 502 }
+          )
+        }
+
+        console.warn(`Gemini request failed on attempt ${attempt}; retrying.`)
+        await new Promise(resolve => setTimeout(resolve, GEMINI_RETRY_DELAY_MS))
+        continue
+      } finally {
+        clearTimeout(timeout)
+      }
+
+      if (response?.ok) break
+
+      if (response && [502, 503, 504].includes(response.status)) {
+        const error = await response.text()
+        console.warn(
+          `Gemini returned HTTP ${response.status} on attempt ${attempt}:`,
+          error
+        )
+        if (attempt < MAX_GEMINI_ATTEMPTS) {
+          await new Promise(resolve => setTimeout(resolve, GEMINI_RETRY_DELAY_MS))
+          continue
+        }
+
+        return NextResponse.json(
+          { error: 'The AI service is temporarily busy. Please try again shortly.' },
+          { status: response.status }
+        )
+      }
+
+      if (response && !response.ok) {
+        const error = await response.text()
+        console.error('Gemini API error:', error)
+        const message = response.status === 404
+          ? 'The configured Gemini model is unavailable for this API key. Check that the key is active and has access to Gemini 3.6 Flash.'
+          : response.status === 429
+            ? 'The AI service rate limit has been reached. Please wait a minute and try again.'
+            : `AI analysis service returned HTTP ${response.status}.`
+        return NextResponse.json(
+          { error: message },
+          { status: 502 }
+        )
+      }
+    }
+
+    if (!response?.ok) {
       return NextResponse.json(
-        { error: message },
+        { error: 'The AI service did not return a response. Please try again.' },
         { status: 502 }
       )
     }

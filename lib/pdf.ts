@@ -37,7 +37,7 @@ export async function extractTextFromPDF(
       onProgress?.(`Recognizing text on scanned PDF page ${pageNumber}...`)
       ocrWorker ??= await createWorker('eng')
 
-      const viewport = page.getViewport({ scale: 1.5 })
+      const viewport = page.getViewport({ scale: 2.5 })
       const canvas = window.document.createElement('canvas')
       const context = canvas.getContext('2d')
       if (!context) {
