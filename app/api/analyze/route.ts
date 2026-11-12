@@ -103,7 +103,7 @@ QUESTIONS FOR YOUR DOCTOR:
 Important: Use simple, non-technical language. Be empathetic and clear. Do NOT use JSON format.`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -130,8 +130,11 @@ Important: Use simple, non-technical language. Be empathetic and clear. Do NOT u
     if (!response.ok) {
       const error = await response.text()
       console.error('Gemini API error:', error)
+      const message = response.status === 404
+        ? 'The configured Gemini model is unavailable for this API key. Check that the key is active and has access to Gemini 3.6 Flash.'
+        : `AI analysis service returned HTTP ${response.status}. Check the Gemini API key and quota.`
       return NextResponse.json(
-        { error: `AI analysis service returned HTTP ${response.status}. Check the Gemini API key, model access, and quota.` },
+        { error: message },
         { status: 502 }
       )
     }

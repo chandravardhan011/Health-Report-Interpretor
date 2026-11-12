@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 ${reportInfo}${conversationContext ? `Previous:\n${conversationContext}\n\n` : ''}User: ${message}`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,10 @@ ${reportInfo}${conversationContext ? `Previous:\n${conversationContext}\n\n` : '
     if (!response.ok) {
       const errorData = await response.text()
       console.error('Gemini API error:', errorData)
-      return NextResponse.json({ error: 'AI service error' }, { status: 502 })
+      const error = response.status === 404
+        ? 'The configured Gemini model is unavailable for this API key. Check that the key is active and has access to Gemini 3.6 Flash.'
+        : `AI service returned HTTP ${response.status}. Check the Gemini API key and quota.`
+      return NextResponse.json({ error }, { status: 502 })
     }
 
     const data = await response.json()
@@ -61,4 +64,4 @@ ${reportInfo}${conversationContext ? `Previous:\n${conversationContext}\n\n` : '
     console.error('Chat API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}
