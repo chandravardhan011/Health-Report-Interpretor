@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+export const maxDuration = 60
 
 function parseTextResponse(content: string) {
   const sections = {
