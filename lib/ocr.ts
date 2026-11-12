@@ -1,25 +1,32 @@
 import { createWorker } from 'tesseract.js'
 import { extractTextFromPDF } from './pdf'
 
-export async function extractTextFromFile(file: File): Promise<string> {
-  // Check if it's a PDF
+export async function extractTextFromFile(
+  file: File,
+  onProgress?: (message: string) => void
+): Promise<string> {
   if (file.type === 'application/pdf') {
-    return await extractTextFromPDF(file)
+    return extractTextFromPDF(file, onProgress)
   }
-  
-  // Otherwise, treat as image and use OCR
-  return await extractTextFromImage(file)
+
+  return extractTextFromImage(file, onProgress)
 }
 
-export async function extractTextFromImage(file: File): Promise<string> {
+export async function extractTextFromImage(
+  file: File,
+  onProgress?: (message: string) => void
+): Promise<string> {
+  onProgress?.('Starting image text recognition...')
   const worker = await createWorker('eng')
-  
+
   try {
-    const imageUrl = URL.createObjectURL(file)
-    const { data: { text } } = await worker.recognize(imageUrl)
-    URL.revokeObjectURL(imageUrl)
-    
-    return text.trim()
+    const { data } = await worker.recognize(file)
+    const text = data.text.trim()
+    if (text.length < 20) {
+      throw new Error('No readable text was found. Try a clearer, well-lit image.')
+    }
+
+    return text
   } finally {
     await worker.terminate()
   }

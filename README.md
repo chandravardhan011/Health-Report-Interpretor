@@ -141,7 +141,7 @@ healthlens-ai/
 
 ### Medical Report Analysis
 - Upload reports as images (JPG, PNG) or PDF
-- Automatic text extraction using OCR
+- Extract selectable PDF text with PDF.js and use OCR for scanned PDF pages and images
 - AI-powered analysis of medical values
 - Identification of abnormal results
 

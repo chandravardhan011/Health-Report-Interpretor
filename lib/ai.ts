@@ -7,9 +7,12 @@ export async function analyzeReport(reportText: string) {
     body: JSON.stringify({ reportText }),
   })
 
+  const data = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error('Failed to analyze report')
+    throw new Error(
+      data?.error || `AI analysis failed (HTTP ${response.status}). Check the Gemini key and quota.`
+    )
   }
 
-  return response.json()
+  return data
 }

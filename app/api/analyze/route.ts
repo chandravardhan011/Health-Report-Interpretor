@@ -61,9 +61,10 @@ function parseTextResponse(content: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { reportText } = await request.json()
+    const body = await request.json()
+    const reportText = body?.reportText
 
-    if (!reportText) {
+    if (typeof reportText !== 'string' || reportText.trim().length === 0) {
       return NextResponse.json(
         { error: 'No report text provided' },
         { status: 400 }
@@ -130,13 +131,24 @@ Important: Use simple, non-technical language. Be empathetic and clear. Do NOT u
       const error = await response.text()
       console.error('Gemini API error:', error)
       return NextResponse.json(
-        { error: 'Failed to analyze report' },
-        { status: 500 }
+        { error: `AI analysis service returned HTTP ${response.status}. Check the Gemini API key, model access, and quota.` },
+        { status: 502 }
       )
     }
 
     const data = await response.json()
-    const content = data.candidates[0].content.parts[0].text
+    const content = data.candidates?.[0]?.content?.parts
+      ?.map((part: { text?: string }) => part.text || '')
+      .join('\n')
+      .trim()
+
+    if (!content) {
+      console.error('Gemini returned no analysis text:', data.promptFeedback)
+      return NextResponse.json(
+        { error: 'The AI service returned no analysis. Try another report or retry shortly.' },
+        { status: 502 }
+      )
+    }
 
     // Parse the structured text response
     const analysis = parseTextResponse(content)

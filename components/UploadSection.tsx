@@ -31,12 +31,10 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
 
     try {
       // Step 1: Extract text
-      const extractedText = await extractTextFromFile(file)
+      const extractedText = await extractTextFromFile(file, setProgress)
       
       if (!extractedText || extractedText.trim().length < 20) {
-        alert('Could not extract enough text. Please try a clearer image.')
-        setIsProcessing(false)
-        return
+        throw new Error('Could not extract enough text. Try a clearer image or PDF.')
       }
 
       setProgress('Analyzing with medical history context...')
@@ -96,9 +94,14 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
       setProgress('')
     } catch (error) {
       console.error('Error processing report:', error)
-      alert('Failed to process report. Please try again.')
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred.'
+      alert(`Could not process this report: ${message}`)
     } finally {
       setIsProcessing(false)
+      setProgress('')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
