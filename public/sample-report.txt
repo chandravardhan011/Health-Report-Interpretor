@@ -1,0 +1,42 @@
+COMPLETE BLOOD COUNT (CBC)
+
+Patient: [REDACTED]
+Date: March 20, 2026
+Lab: HealthLab Medical Center
+
+Test Name                Result      Reference Range      Units       Status
+--------------------------------------------------------------------------------
+Hemoglobin              11.2        12.0-16.0            g/dL        LOW
+White Blood Cells       7.5         4.0-11.0             10^3/uL     NORMAL
+Red Blood Cells         4.2         4.5-5.5              10^6/uL     LOW
+Platelets               250         150-400              10^3/uL     NORMAL
+Hematocrit              35          37-47                %           LOW
+
+METABOLIC PANEL
+--------------------------------------------------------------------------------
+Glucose (Fasting)       105         70-100               mg/dL       HIGH
+Creatinine              0.9         0.6-1.2              mg/dL       NORMAL
+BUN                     15          7-20                 mg/dL       NORMAL
+Sodium                  140         136-145              mmol/L      NORMAL
+Potassium               4.2         3.5-5.0              mmol/L      NORMAL
+
+LIPID PANEL
+--------------------------------------------------------------------------------
+Cholesterol Total       220         <200                 mg/dL       HIGH
+HDL Cholesterol         45          >40                  mg/dL       NORMAL
+LDL Cholesterol         150         <100                 mg/dL       HIGH
+Triglycerides           125         <150                 mg/dL       NORMAL
+
+VITAMINS & MINERALS
+--------------------------------------------------------------------------------
+Vitamin D               18          30-100               ng/mL       LOW
+Vitamin B12             450         200-900              pg/mL       NORMAL
+Iron                    55          60-170               ug/dL       LOW
+
+NOTES:
+- Low hemoglobin may indicate anemia
+- Elevated glucose suggests prediabetes
+- High cholesterol requires dietary modification
+- Low Vitamin D supplementation recommended
+
+Please consult your physician for interpretation and treatment recommendations.
