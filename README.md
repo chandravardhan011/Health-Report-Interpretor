@@ -86,7 +86,18 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Server-only Firebase service account
+FIREBASE_ADMIN_PROJECT_ID=your_project_id
+FIREBASE_ADMIN_CLIENT_EMAIL=your_service_account_email
+FIREBASE_ADMIN_PRIVATE_KEY="your_service_account_private_key"
 ```
+
+Create a dedicated Google Cloud service account for the server and grant it the
+Cloud Datastore User role. Add its project ID, service-account email, and private
+key to the server environment. Never expose the private key in client-side
+variables, source control, or chat. The app verifies the Clerk session on the
+server and uses the verified Clerk user ID to scope report access.
 
 4. **Run the development server**
 ```bash

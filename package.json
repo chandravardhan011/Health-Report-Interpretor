@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.6",
+    "@opentelemetry/api": "^1.10.0",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.70",
     "firebase": "^12.11.0",
+    "firebase-admin": "^14.5.1",
     "lucide-react": "^0.344.0",
     "next": "^15.0.0",
     "pdfjs-dist": "3.11.174",

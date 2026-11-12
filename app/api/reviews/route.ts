@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/firebase'
-import { 
-  collection, addDoc, getDocs, query, orderBy, limit, 
-  where, serverTimestamp, Timestamp 
-} from 'firebase/firestore'
+import { auth } from '@clerk/nextjs/server'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { getAdminFirestore } from '@/lib/firebase-admin'
+
+export const runtime = 'nodejs'
 
 // GET — Fetch reviews (simplified query - no index needed)
 export async function GET(req: NextRequest) {
@@ -12,13 +12,11 @@ export async function GET(req: NextRequest) {
     const limitCount = parseInt(searchParams.get('limit') || '50')
     
     // Simple query - just order by creation date (no index needed)
-    const q = query(
-      collection(db, 'reviews'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    )
-
-    const snapshot = await getDocs(q)
+    const snapshot = await getAdminFirestore()
+      .collection('reviews')
+      .orderBy('createdAt', 'desc')
+      .limit(Number.isInteger(limitCount) ? Math.min(Math.max(limitCount, 1), 100) : 50)
+      .get()
     const reviews = snapshot.docs.map(doc => {
       const data = doc.data()
       return {
@@ -47,8 +45,13 @@ export async function GET(req: NextRequest) {
 // POST — Submit a new review
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in to submit a review.' }, { status: 401 })
+    }
+
     const body = await req.json()
-    const { name, role, specialty, rating, title, text, userId, userEmail } = body
+    const { name, role, specialty, rating, title, text } = body
 
     // Validation
     if (!name || !role || !rating || !text) {
@@ -94,15 +97,14 @@ export async function POST(req: NextRequest) {
       rating: Number(rating),
       title: title?.trim() || null,
       text: text.trim(),
-      userId: userId || null,
-      userEmail: userEmail || null,
-      verified: !!userId, // Auto-verified if logged in with Clerk
+      userId,
+      verified: true,
       approved: true, // Auto-approve for now; can add moderation later
       helpful: 0,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     }
 
-    const docRef = await addDoc(collection(db, 'reviews'), review)
+    const docRef = await getAdminFirestore().collection('reviews').add(review)
 
     return NextResponse.json({ 
       success: true, 

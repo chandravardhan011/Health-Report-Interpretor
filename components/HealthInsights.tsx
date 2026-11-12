@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity, Heart, Droplet, Brain } from 'lucide-react'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 
 interface HealthInsightsProps {
   userId?: string
@@ -21,6 +19,12 @@ interface RiskPrediction {
   color: string
 }
 
+interface ReportSummary {
+  summary?: string
+  details?: string
+  uploadDate?: string
+}
+
 export default function HealthInsights({ userId, refresh }: HealthInsightsProps) {
   const [predictions, setPredictions] = useState<RiskPrediction[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,13 +39,12 @@ export default function HealthInsights({ userId, refresh }: HealthInsightsProps)
     const analyzeHealthRisks = async () => {
       setLoading(true)
       try {
-        const q = query(
-          collection(db, 'reports'),
-          where('userId', '==', userId),
-          orderBy('uploadDate', 'desc')
-        )
-        const snapshot = await getDocs(q)
-        const reports = snapshot.docs.map(doc => doc.data())
+        const response = await fetch('/api/reports')
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to fetch reports (HTTP ${response.status}).`)
+        }
+        const reports = result.reports as ReportSummary[]
         setReportCount(reports.length)
 
         if (reports.length === 0) {
@@ -54,24 +57,7 @@ export default function HealthInsights({ userId, refresh }: HealthInsightsProps)
         setPredictions(risks)
       } catch (error) {
         console.error('Error analyzing health risks:', error)
-        // Fallback: try without orderBy
-        try {
-          const q = query(
-            collection(db, 'reports'),
-            where('userId', '==', userId)
-          )
-          const snapshot = await getDocs(q)
-          const reports = snapshot.docs.map(doc => doc.data())
-          reports.sort((a: any, b: any) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
-          setReportCount(reports.length)
-          
-          if (reports.length > 0) {
-            const risks = await generateRiskPredictions(reports)
-            setPredictions(risks)
-          }
-        } catch (err2) {
-          console.error('Fallback error:', err2)
-        }
+        setPredictions([])
       } finally {
         setLoading(false)
       }
@@ -80,7 +66,7 @@ export default function HealthInsights({ userId, refresh }: HealthInsightsProps)
     analyzeHealthRisks()
   }, [userId, refresh])
 
-  const generateRiskPredictions = async (reports: any[]): Promise<RiskPrediction[]> => {
+  const generateRiskPredictions = async (reports: ReportSummary[]): Promise<RiskPrediction[]> => {
     // Analyze report summaries for health patterns
     const allText = reports.map(r => r.summary + ' ' + r.details).join(' ').toLowerCase()
     

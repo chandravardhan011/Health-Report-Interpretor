@@ -2,8 +2,6 @@
 
 import { useState, useRef } from 'react'
 import { Upload, Camera, Loader2, FileText } from 'lucide-react'
-import { collection, addDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { extractTextFromFile } from '@/lib/ocr'
 import { analyzeReport } from '@/lib/ai'
 
@@ -43,14 +41,12 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
       let previousContext = ''
       if (userId) {
         try {
-          const q = query(
-            collection(db, 'reports'),
-            where('userId', '==', userId),
-            orderBy('uploadDate', 'desc'),
-            limit(3)
-          )
-          const snapshot = await getDocs(q)
-          const previousReports = snapshot.docs.map(doc => doc.data())
+          const response = await fetch('/api/reports?limit=3')
+          if (!response.ok) {
+            throw new Error(`Could not load previous reports (HTTP ${response.status}).`)
+          }
+          const { reports } = await response.json()
+          const previousReports: { uploadDate: string; summary: string }[] = reports
           
           if (previousReports.length > 0) {
             previousContext = '\n\nPREVIOUS MEDICAL HISTORY:\n' + 
@@ -59,7 +55,7 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
               ).join('\n\n')
           }
         } catch (error) {
-          console.error('Error fetching history:', error)
+          console.error('Could not load prior report context:', error)
         }
       }
 
@@ -75,17 +71,28 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
       // Step 4: Save to Firebase
       if (userId) {
         try {
-          await addDoc(collection(db, 'reports'), {
-            userId,
+          const response = await fetch('/api/reports', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
             fileName: file.name,
             extractedText,
             summary: analysis.summary,
             details: analysis.details,
             findings: analysis.keyFindings || [],
-            uploadDate: new Date().toISOString(),
+            }),
           })
+          if (!response.ok) {
+            const data = await response.json().catch(() => null)
+            throw new Error(data?.error || `Could not save report (HTTP ${response.status}).`)
+          }
         } catch (error) {
           console.error('Error saving report:', error)
+          onAnalysisComplete(result)
+          const message = error instanceof Error ? error.message : 'Unknown storage error.'
+          alert(`Analysis completed, but the report was not saved to your history: ${message}`)
+          setProgress('')
+          return
         }
       }
 

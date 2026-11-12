@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { FileText, Calendar, TrendingUp } from 'lucide-react'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import ReportDetailModal from './ReportDetailModal'
 
 interface Report {
@@ -19,6 +17,7 @@ interface Report {
 export default function MedicalHistory({ userId, refresh }: { userId?: string; refresh: number }) {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -40,45 +39,17 @@ export default function MedicalHistory({ userId, refresh }: { userId?: string; r
 
     const fetchReports = async () => {
       setLoading(true)
+      setError('')
       try {
-        console.log('Fetching reports for userId:', userId)
-        const q = query(
-          collection(db, 'reports'),
-          where('userId', '==', userId),
-          orderBy('uploadDate', 'desc')
-        )
-        const snapshot = await getDocs(q)
-        console.log('Found reports:', snapshot.size)
-        const data = snapshot.docs.map(doc => {
-          const docData = doc.data()
-          console.log('Report data:', docData)
-          return {
-            id: doc.id,
-            ...docData
-          }
-        }) as Report[]
-        setReports(data)
+        const response = await fetch('/api/reports')
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to fetch reports (HTTP ${response.status}).`)
+        }
+        setReports(result.reports as Report[])
       } catch (error) {
         console.error('Error fetching reports:', error)
-        // If index error, try without orderBy
-        try {
-          console.log('Trying query without orderBy...')
-          const q = query(
-            collection(db, 'reports'),
-            where('userId', '==', userId)
-          )
-          const snapshot = await getDocs(q)
-          console.log('Found reports (no order):', snapshot.size)
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Report[]
-          // Sort manually
-          data.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
-          setReports(data)
-        } catch (err2) {
-          console.error('Error fetching reports (fallback):', err2)
-        }
+        setError(error instanceof Error ? error.message : 'Failed to load reports.')
       } finally {
         setLoading(false)
       }
@@ -105,6 +76,8 @@ export default function MedicalHistory({ userId, refresh }: { userId?: string; r
 
       {loading ? (
         <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+      ) : error ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : reports.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="w-12 h-12 mx-auto text-gray-400 mb-2" />
