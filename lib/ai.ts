@@ -1,10 +1,10 @@
-export async function analyzeReport(reportText: string) {
+export async function analyzeReport(reportText: string, historyContext = '') {
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ reportText }),
+    body: JSON.stringify({ reportText, historyContext }),
   })
 
   const data = await response.json().catch(() => null)

@@ -16,18 +16,22 @@ HealthLens AI democratizes healthcare understanding using advanced AI to:
 - 📸 **Smart Upload** - Accept medical reports in any format (PDF, images, scanned documents)
 - 🧠 **AI Analysis** - Extract and analyze medical data using Google Gemini AI
 - 📊 **Visual Insights** - Present complex data in easy-to-understand charts and graphs
-- 🔮 **Health Prediction** - Analyze patterns across multiple reports to predict health risks
+- 🔮 **Rule-Based Health Screening** - Assess detected lab values with transparent threshold rules
 - 💬 **AI Chat** - Answer questions about your reports in plain language
 - 📈 **Trend Tracking** - Monitor health metrics over time
 
 ## ✨ Key Features
 
-### 🎯 AI Health Risk Predictor (Winning Feature)
-Our standout innovation analyzes patterns across multiple reports to predict:
+### 🎯 Rule-Based Health Screening
+The screening layer evaluates recognized biomarkers for:
 - Cardiovascular health risks
 - Diabetes risk assessment
 - Anemia detection
-- Overall health score with actionable recommendations
+- Related kidney and liver markers
+
+These scores are informational rule-based indicators, not trained or clinically validated
+predictions, diagnoses, or probabilities of developing a disease. A clinician should interpret
+the results in context.
 
 ### 🔐 Context-Aware AI
 Unlike other tools, HealthLens AI remembers your medical history and provides personalized insights based on your complete health profile.
@@ -144,7 +148,8 @@ healthlens-ai/
 │   ├── ai.ts             # AI integration
 │   ├── firebase.ts       # Firebase config
 │   ├── ocr.ts            # OCR processing
-│   └── pdf.ts            # PDF handling
+│   ├── pdf.ts            # PDF handling
+│   └── medical-analysis/ # Biomarker parsing and threshold screening
 └── public/               # Static assets
 ```
 
@@ -153,14 +158,14 @@ healthlens-ai/
 ### Medical Report Analysis
 - Upload reports as images (JPG, PNG) or PDF
 - Extract selectable PDF text with PDF.js and use OCR for scanned PDF pages and images
-- AI-powered analysis of medical values
+- Parse detected biomarkers, values, units, and reference ranges
+- AI-powered explanations with separate current-report and history context
 - Identification of abnormal results
 
 ### Health Risk Prediction
-- Cardiovascular health assessment
-- Diabetes risk calculation
-- Anemia detection
+- Rule-based cardiovascular, blood sugar, kidney, liver, and blood-count screening
 - Personalized health recommendations
+- Scores are informational and are not validated clinical predictions or diagnoses
 
 ### Report History
 - Store unlimited reports

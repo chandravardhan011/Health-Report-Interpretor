@@ -60,7 +60,7 @@ export default function UploadSection({ onAnalysisComplete, userId }: UploadSect
       }
 
       // Step 3: AI Analysis with context
-      const analysis = await analyzeReport(extractedText + previousContext)
+      const analysis = await analyzeReport(extractedText, previousContext)
       
       const result = {
         originalText: extractedText,

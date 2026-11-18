@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { parseMedicalReport } from '@/lib/medical-analysis/reportParser.js'
+import { calculateHealthRisks } from '@/lib/medical-analysis/riskEngine.js'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 export const maxDuration = 60
 const GEMINI_REQUEST_TIMEOUT_MS = 20_000
 const GEMINI_RETRY_DELAY_MS = 1_000
 const MAX_GEMINI_ATTEMPTS = 2
+
+type ParsedBiomarker = {
+  id: string
+  name: string
+  value: number | undefined
+  unit: string
+  status: string
+  clinicalNote: string
+}
+
+type AnalysisResponse = ReturnType<typeof parseTextResponse> & {
+  detectedBiomarkers?: ParsedBiomarker[]
+  riskAssessment?: ReturnType<typeof calculateHealthRisks>
+}
 
 function parseTextResponse(content: string) {
   const sections = {
@@ -67,6 +83,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const reportText = body?.reportText
+    const historyContext =
+      typeof body?.historyContext === 'string' ? body.historyContext.trim() : ''
 
     if (typeof reportText !== 'string' || reportText.trim().length === 0) {
       return NextResponse.json(
@@ -86,6 +104,7 @@ export async function POST(request: NextRequest) {
 
 Medical Report:
 ${reportText}
+${historyContext ? `\n\nRelevant previous report summaries for context (do not treat these as current results):\n${historyContext}` : ''}
 
 Please provide your response in this EXACT format (do NOT use JSON, just plain text):
 
@@ -210,7 +229,27 @@ Important: Use simple, non-technical language. Be empathetic and clear. Do NOT u
     }
 
     // Parse the structured text response
-    const analysis = parseTextResponse(content)
+    const analysis: AnalysisResponse = parseTextResponse(content)
+    const parsedReport = parseMedicalReport(reportText)
+
+    if (parsedReport.biomarkers.length > 0) {
+      const riskAssessment = calculateHealthRisks(
+        parsedReport.biomarkers,
+        parsedReport.patient || {}
+      )
+
+      analysis.keyFindings = parsedReport.biomarkers.map((biomarker: ParsedBiomarker) => ({
+        parameter: `${biomarker.name} (${biomarker.value} ${biomarker.unit})`,
+        explanation: biomarker.clinicalNote,
+        status: biomarker.status === 'NORMAL'
+          ? 'normal'
+          : biomarker.status.startsWith('BORDERLINE')
+            ? 'borderline'
+            : 'abnormal',
+      }))
+      analysis.detectedBiomarkers = parsedReport.biomarkers
+      analysis.riskAssessment = riskAssessment
+    }
 
     return NextResponse.json(analysis)
   } catch (error) {

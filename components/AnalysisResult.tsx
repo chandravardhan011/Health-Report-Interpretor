@@ -3,6 +3,14 @@
 import { useState } from 'react'
 import { CheckCircle, AlertCircle, Info, Download, Eye, EyeOff } from 'lucide-react'
 
+const riskCategoryBiomarkers = {
+  cardio: { label: 'Cardiovascular', ids: ['LDL_CHOLESTEROL', 'TOTAL_CHOLESTEROL', 'HDL_CHOLESTEROL', 'TRIGLYCERIDES', 'CHOL_HDL_RATIO'] },
+  metabolic: { label: 'Blood sugar', ids: ['HBA1C', 'FASTING_GLUCOSE', 'TRIGLYCERIDES'] },
+  kidney: { label: 'Kidney', ids: ['EGFR', 'SERUM_CREATININE', 'BUN', 'URIC_ACID'] },
+  liver: { label: 'Liver', ids: ['ALT', 'AST', 'TOTAL_BILIRUBIN', 'ALKALINE_PHOSPHATASE', 'ALBUMIN'] },
+  anemia: { label: 'Blood count and iron', ids: ['HEMOGLOBIN', 'MCV', 'SERUM_FERRITIN', 'WBC_COUNT', 'PLATELET_COUNT'] },
+}
+
 interface AnalysisResultProps {
   result: {
     originalText: string
@@ -14,6 +22,14 @@ interface AnalysisResultProps {
 export default function AnalysisResult({ result }: AnalysisResultProps) {
   const { analysis, originalText } = result
   const [showExtractedText, setShowExtractedText] = useState(false)
+  const detectedBiomarkers = analysis.detectedBiomarkers || []
+  const availableRisks = analysis.riskAssessment
+    ? Object.entries(riskCategoryBiomarkers).filter(([, category]) =>
+        detectedBiomarkers.some((biomarker: { id: string }) =>
+          category.ids.includes(biomarker.id)
+        )
+      )
+    : []
 
   const handleDownload = () => {
     const content = `HealthLens AI Analysis Report
@@ -88,6 +104,71 @@ Disclaimer: This analysis is for educational purposes only. Consult healthcare p
           <p className="whitespace-pre-line leading-relaxed">{analysis.details}</p>
         </div>
       </div>
+
+      {detectedBiomarkers.length > 0 && (
+        <section className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">Detected Lab Results</h3>
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-700">
+                <tr>
+                  <th className="px-4 py-3">Test</th>
+                  <th className="px-4 py-3">Result</th>
+                  <th className="px-4 py-3">Range used</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detectedBiomarkers.map((biomarker: {
+                  id: string
+                  name: string
+                  value: number
+                  unit: string
+                  optimalRange: number[]
+                  status: string
+                }) => (
+                  <tr key={biomarker.id} className="border-t border-gray-200">
+                    <td className="px-4 py-3 font-medium">{biomarker.name}</td>
+                    <td className="px-4 py-3">{biomarker.value} {biomarker.unit}</td>
+                    <td className="px-4 py-3">
+                      {biomarker.optimalRange?.join(' - ')} {biomarker.unit}
+                    </td>
+                    <td className="px-4 py-3">{biomarker.status.replace('_', ' ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {analysis.riskAssessment && detectedBiomarkers.length > 0 && (
+        <section className="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <h3 className="text-xl font-semibold text-amber-950">Rule-Based Screening</h3>
+          <p className="mt-2 text-sm text-amber-900">
+            Informational scores based only on detected lab values and preset thresholds. They are
+            not diagnoses or probabilities of developing a disease; review results with a clinician.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {availableRisks.map(([key, category]) => {
+              const risk = analysis.riskAssessment.risks[key]
+              return (
+                <div key={key} className="rounded-lg border border-amber-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-semibold text-gray-900">{category.label}</h4>
+                    <span className="font-bold text-gray-900">{risk.score}/100</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">
+                    {risk.factors.length > 0
+                      ? risk.factors.join('. ')
+                      : 'No flagged thresholds among the detected values.'}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Key Findings */}
       {analysis.keyFindings && analysis.keyFindings.length > 0 && (

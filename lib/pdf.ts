@@ -24,9 +24,28 @@ export async function extractTextFromPDF(
       onProgress?.(`Reading PDF page ${pageNumber} of ${document.numPages}...`)
       const page = await document.getPage(pageNumber)
       const textContent = await page.getTextContent()
-      const pageText = textContent.items
-        .map(item => ('str' in item ? item.str : ''))
-        .join(' ')
+      const lineGroups: { y: number; items: { text: string; x: number }[] }[] = []
+
+      for (const item of textContent.items) {
+        if (!('str' in item) || !item.str.trim()) continue
+
+        const x = item.transform[4]
+        const y = item.transform[5]
+        let line = lineGroups.find(group => Math.abs(group.y - y) <= 4)
+        if (!line) {
+          line = { y, items: [] }
+          lineGroups.push(line)
+        }
+        line.items.push({ text: item.str.trim(), x })
+      }
+
+      const pageText = lineGroups
+        .sort((a, b) => b.y - a.y)
+        .map(line => line.items
+          .sort((a, b) => a.x - b.x)
+          .map(item => item.text)
+          .join(' '))
+        .join('\n')
         .trim()
 
       if (pageText.length >= MIN_TEXT_LENGTH) {
